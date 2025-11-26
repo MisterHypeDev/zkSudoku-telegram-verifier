@@ -1,0 +1,22 @@
+[package]
+name = "zkv-sudoku-verify-lib"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "no_std verifier library for Sudoku public inputs + proof"
+
+[features]
+# std only for tests; runtime will build without std
+default = ["std"]
+std = [
+  "parity-scale-codec/std",
+  "scale-info/std",
+]
+
+[dependencies]
+parity-scale-codec = { version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
+sha2 = { version = "0.10", default-features = false }
+
+[lib]
+path = "src/lib.rs"

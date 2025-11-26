@@ -1,0 +1,16 @@
+[package]
+name = "sudoku-verifier-lib"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "no_std Sudoku constraints verifier for zkVerify pallet integration"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+# Default to std to ease local testing. For WASM/no_std, build with `--no-default-features`.
+default = ["std"]
+std = []
+
+[dependencies]

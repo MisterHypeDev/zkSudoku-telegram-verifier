@@ -3,3 +3,25 @@ target/
 dist/
 .env
 config/*.env
+
+# Added for public repo
+node_modules/
+**/node_modules/
+config/config.env
+config/*.env
+.env
+.env.*
+**/target/
+**/*.o
+**/*.rlib
+**/*.d
+**/*.hex
+**/*.gz
+**/*.wasm
+**/*.a
+**/*.so
+**/*.dll
+**/*.exe
+proofs/
+**/aggregation.json
+

@@ -1,0 +1,51 @@
+[package]
+name = "pallet-zk-sudoku"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "FRAME pallet that verifies Sudoku boards using sudoku-verifier-lib"
+
+[dependencies]
+# Optional FRAME deps; enabled via the `frame` feature only
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.8.0", default-features = false, optional = true }
+frame-system  = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.8.0", default-features = false, optional = true }
+sp-std        = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.8.0", default-features = false, optional = true }
+sp-runtime    = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.8.0", default-features = false, optional = true }
+codec         = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"], optional = true }
+scale-info    = { version = "2", default-features = false, features = ["derive"], optional = true }
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.8.0", default-features = false, optional = true }
+
+sudoku-verifier-lib = { path = "../sudoku-verifier-lib", default-features = false }
+zkv-sudoku-verify-lib = { path = "../zkv-sudoku-verify-lib", default-features = false }
+
+[features]
+# Default to "std" and "standalone" (no FRAME). In a node runtime, enable `frame`.
+default = ["std", "standalone"]
+standalone = []
+frame = [
+  "frame-support",
+  "frame-system",
+  "sp-std",
+  "sp-runtime",
+  "codec",
+  "scale-info",
+]
+runtime-benchmarks = [
+  "frame",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+]
+std = [
+  "sudoku-verifier-lib/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-std/std",
+  "sp-runtime/std",
+  "codec/std",
+  "scale-info/std",
+  "frame-benchmarking/std",
+]
+
+[lib]
+path = "src/lib.rs"

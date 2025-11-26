@@ -1,0 +1,3527 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1" />
+  <title>ZkSudoku</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root { 
+      /* Light theme (default) */
+      --bg: transparent; 
+      --text: #333; 
+      --muted: #666; 
+      --accent: #007AFF; 
+      --error: #ff3b30; 
+      --cell: #ffffff; 
+      --cell-given: #f8f9fa; 
+      --border: #e0e0e0;
+      --grid-border: #d0d0d0;
+      --button-bg: #ffffff;
+      --button-text: #007AFF;
+      --button-secondary: #f2f2f2;
+      --keypad-bg: rgba(255, 255, 255, 0.95);
+      --shadow: rgba(0, 0, 0, 0.1);
+      --selected-bg: rgba(0, 122, 255, 0.1);
+      --conflict-bg: rgba(255, 59, 48, 0.1);
+    }
+    
+    /* Ensure smooth transitions for all themeable elements */
+    * {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    [data-theme="dark"] {
+      /* Dark theme */
+      --bg: transparent; 
+      --text: #ffffff; 
+      --muted: #a0a0a0; 
+      --accent: #0A84FF; 
+      --error: #ff453a; 
+      --cell: #2c2c2e; 
+      --cell-given: #3a3a3c; 
+      --border: #38383a;
+      --grid-border: #48484a;
+      --button-bg: #2c2c2e;
+      --button-text: #0A84FF;
+      --button-secondary: #3a3a3c;
+      --keypad-bg: rgba(28, 28, 30, 0.95);
+      --shadow: rgba(0, 0, 0, 0.3);
+      --selected-bg: rgba(10, 132, 255, 0.2);
+      --conflict-bg: rgba(255, 69, 58, 0.2);
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+      margin: 0; 
+      background: var(--bg); 
+      color: var(--text); 
+      line-height: 1.4;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+      box-sizing: border-box;
+    }
+    
+    .wrap { 
+      padding: 20px; 
+      max-width: 2000px; 
+      margin: 0 auto; 
+      background: var(--bg);
+      transition: background-color 0.3s ease;
+      min-height: 100vh;
+      overflow-x: hidden;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    /* Main Menu Styles */
+    .main-menu {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      position: relative;
+      z-index: 10;
+      background: var(--bg);
+    }
+    
+    .menu-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .menu-logo {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .menu-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    
+    .menu-subtitle {
+      font-size: 18px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    
+    .menu-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 24px;
+    }
+    
+    .menu-option {
+      background: var(--button-bg);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    
+    .menu-option:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px var(--shadow);
+      border-color: var(--accent);
+    }
+    
+    .menu-option:active {
+      transform: translateY(-2px);
+    }
+    
+    .menu-option-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: white;
+      font-weight: bold;
+    }
+    
+    .menu-option-16x16 .menu-option-icon {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .menu-option-logic-lane .menu-option-icon {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .menu-option-killer .menu-option-icon {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .menu-option-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    .menu-option-description {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    
+    .top-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .theme-toggle {
+      background: var(--button-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      font-weight: 500;
+    }
+    
+    .theme-toggle:hover {
+      background: var(--button-secondary);
+      transform: translateY(-1px);
+    }
+    
+    .top-icon-btn {
+      background: var(--button-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px;
+      font-size: 12px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+    }
+    
+    .top-icon-btn:hover {
+      background: var(--button-secondary);
+      transform: translateY(-1px);
+    }
+    
+    .top-icon-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+    
+    .top-icon-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .top-icon-btn:disabled:hover {
+      transform: none;
+      background: var(--button-bg);
+    }
+    
+    /* Game Interface Styles (hidden by default) */
+    .game-interface {
+      display: none !important;
+      visibility: hidden;
+      opacity: 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: auto;
+      pointer-events: none;
+      background: var(--bg);
+      z-index: 100;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    
+    .game-interface.active {
+      display: block !important;
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Leaderboard Interface Styles (hidden by default) */
+    .leaderboard-interface {
+      display: none !important;
+      visibility: hidden;
+      opacity: 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: auto;
+      pointer-events: none;
+      background: var(--bg);
+      z-index: 100;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    
+    .leaderboard-interface.active {
+      display: block !important;
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    /* Puzzle Selection Interface Styles (hidden by default) */
+    .puzzle-selection-interface {
+      display: none !important;
+      visibility: hidden;
+      opacity: 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: auto;
+      pointer-events: none;
+      background: var(--bg);
+      z-index: 100;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    
+    .puzzle-selection-interface.active {
+      display: block !important;
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    /* Ensure hidden interfaces don't take up space */
+    .game-interface:not(.active),
+    .leaderboard-interface:not(.active),
+    .puzzle-selection-interface:not(.active) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    
+    /* Main menu styles when active */
+    .main-menu {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 10 !important;
+      background: var(--bg) !important;
+      padding: 20px !important;
+      box-sizing: border-box !important;
+    }
+    
+    /* Hide main menu when any other interface is shown */
+    body:has(.game-interface.active) .main-menu,
+    body:has(.leaderboard-interface.active) .main-menu,
+    body:has(.puzzle-selection-interface.active) .main-menu {
+      display: none !important;
+    }
+    
+    /* Hide main menu when other interfaces are active */
+    .game-interface.active ~ .main-menu,
+    .leaderboard-interface.active ~ .main-menu,
+    .puzzle-selection-interface.active ~ .main-menu {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    
+    /* No transition for immediate switching between screens */
+    .main-menu,
+    .game-interface,
+    .leaderboard-interface,
+    .puzzle-selection-interface {
+      transition: none;
+    }
+    
+    .puzzle-selection-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    
+    .puzzle-selection-header h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    
+    .puzzle-selection-header p {
+      font-size: 16px;
+      color: var(--muted);
+      margin: 0;
+    }
+    
+    .puzzle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .puzzle-card {
+      background: var(--cell);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+    
+    .puzzle-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px var(--shadow);
+      border-color: var(--accent);
+    }
+    
+    .puzzle-card:active {
+      transform: translateY(-2px);
+    }
+    
+    .puzzle-card.selected {
+      border-color: var(--accent);
+      background: var(--selected-bg);
+    }
+    
+    .puzzle-number {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    
+    .puzzle-name {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    
+    .puzzle-difficulty {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      padding: 4px 12px;
+      border-radius: 12px;
+      display: inline-block;
+      background: var(--button-secondary);
+    }
+    
+    .puzzle-difficulty.medium {
+      background: rgba(255, 193, 7, 0.2);
+      color: #f57c00;
+    }
+    
+    .puzzle-difficulty.hard {
+      background: rgba(244, 67, 54, 0.2);
+      color: #d32f2f;
+    }
+    
+    .puzzle-preview {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 16px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--grid-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .puzzle-preview-cell {
+      background: var(--cell);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    .puzzle-preview-cell.given {
+      background: var(--cell-given);
+      color: var(--text);
+    }
+    
+    .puzzle-preview-cell.empty {
+      background: var(--cell);
+    }
+    
+    .puzzle-description {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    
+    .leaderboard-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    
+    .leaderboard-header h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    
+    .leaderboard-header p {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0;
+    }
+    
+    .leaderboard-filter {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: var(--cell);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    
+    .leaderboard-filter label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    
+    .puzzle-select {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--background);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+    }
+    
+    .puzzle-select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    .leaderboard-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+    
+    .leaderboard-container {
+      background: var(--cell);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--shadow);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    
+    .leaderboard-table {
+      width: 100%;
+    }
+    
+    .leaderboard-header-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 80px 100px 80px;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--button-secondary);
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .leaderboard-entries {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .leaderboard-entry {
+      display: grid;
+      grid-template-columns: 60px 1fr 80px 100px 80px;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      transition: background-color 0.2s ease;
+    }
+    
+    .leaderboard-entry:hover {
+      background: var(--button-secondary);
+    }
+    
+    .leaderboard-entry:last-child {
+      border-bottom: none;
+    }
+    
+    .rank-col {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .player-col {
+      font-size: 14px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .score-col {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    
+    .date-col {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    
+    .proof-col {
+      text-align: center;
+    }
+    
+    .proof-button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .proof-button:hover {
+      background: var(--text);
+      transform: translateY(-1px);
+    }
+    
+    .leaderboard-status {
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted);
+      padding: 20px;
+    }
+    
+    /* Medal colors for top 3 */
+    .leaderboard-entry:nth-child(1) .rank-col {
+      color: #FFD700; /* Gold */
+    }
+    
+    .leaderboard-entry:nth-child(2) .rank-col {
+      color: #C0C0C0; /* Silver */
+    }
+    
+    .leaderboard-entry:nth-child(3) .rank-col {
+      color: #CD7F32; /* Bronze */
+    }
+    
+    .back-button {
+      background: var(--button-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      font-weight: 500;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .back-button:hover {
+      background: var(--button-secondary);
+      transform: translateY(-1px);
+    }
+    
+    .back-button svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+    
+    /* Existing Sudoku styles */
+    h2 { 
+      margin: 0 0 16px 0; 
+      font-size: 32px; 
+      font-weight: 700;
+      color: var(--text);
+      transition: color 0.3s ease;
+    }
+    
+    #meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+    
+    .pause-btn {
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      margin-left: 8px;
+      opacity: 0.8;
+      vertical-align: middle;
+    }
+    
+    .pause-btn:hover {
+      opacity: 1;
+      background: var(--button-secondary);
+      transform: scale(1.1);
+    }
+    
+    .pause-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .pause-btn.paused {
+      opacity: 0.6;
+    }
+    
+    .pause-btn.paused:hover {
+      opacity: 0.8;
+    }
+    
+    /* Timer paused state */
+    .timer-paused {
+      opacity: 0.6;
+      color: var(--muted);
+    }
+    
+    .timer-paused #timer {
+      color: var(--muted);
+    }
+    
+    /* Pause indicator styles */
+    .pause-indicator {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      z-index: 1000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      backdrop-filter: blur(4px);
+    }
+    
+    .pause-indicator.show {
+      opacity: 1;
+    }
+    
+    .pause-indicator .pause-icon {
+      font-size: 24px;
+      margin-right: 8px;
+    }
+    
+    .board { 
+      background: transparent; 
+      padding: 4px; 
+      border-radius: 0; 
+      box-shadow: none;
+      margin-bottom: 20px;
+      transition: background-color 0.3s ease;
+    }
+    
+    .grid { 
+      display: grid; 
+      grid-template-columns: repeat(9, 1fr); 
+      gap: 0; 
+      background: var(--grid-border);
+      border-radius: 0;
+      overflow: hidden;
+      transition: background-color 0.3s ease;
+    }
+    
+    .grid-16x16 {
+      grid-template-columns: repeat(16, 1fr);
+      gap: 0;
+      min-width: 512px; /* 16 * 32px minimum cell width */
+      min-height: 512px; /* 16 * 32px minimum cell height */
+      max-width: 100vw;
+      max-height: 70vh;
+    }
+    
+    /* iPad and Tablet Layouts */
+    @media (min-width: 768px) and (max-width: 1024px) {
+      /* iPad Air (820px) and iPad Pro (1024px) */
+      body {
+        overflow-x: hidden;
+        width: 100%;
+      }
+      
+      .wrap {
+        max-width: 100%;
+        padding: 20px;
+        margin: 0 auto;
+        overflow-x: hidden;
+      }
+      
+      .game-interface {
+        max-width: 1000px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 16px; /* Reduced padding to give more space for grid */
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        box-sizing: border-box;
+        overflow-x: hidden;
+      }
+      
+      .board {
+        flex: 1;
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 1px !important; /* Minimal padding to ensure grid border visibility */
+      }
+      
+      .grid-16x16 {
+        width: calc(100% - 2px) !important; /* Account for board padding (1px * 2) */
+        height: auto !important;
+        max-width: calc(100% - 2px) !important; /* Ensure it fits within container */
+        max-height: calc(100% - 2px) !important;
+        margin: 0 auto;
+        aspect-ratio: 1;
+        min-width: unset !important;
+        min-height: unset !important;
+        display: grid;
+        grid-template-columns: repeat(16, 1fr);
+        grid-template-rows: repeat(16, 1fr);
+        gap: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+        background: var(--grid-border) !important; /* Ensure border is always visible */
+      }
+      
+      .cell-16x16 {
+        width: 100% !important;
+        height: 100% !important;
+        font-size: 14px !important;
+        min-width: unset !important;
+        min-height: unset !important;
+        box-sizing: border-box;
+        position: relative;
+      }
+      
+      .cell-16x16 input {
+        font-size: 14px !important;
+        padding: 2px !important;
+        line-height: 1;
+        text-align: center;
+        vertical-align: middle;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+      }
+      
+      .notes-16x16 {
+        font-size: 8px !important;
+        padding: 1px !important;
+        gap: 1px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      
+      .notes-16x16 span {
+        font-size: 8px !important;
+        line-height: 1;
+        padding: 0px !important;
+        margin: 0px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+      
+      .grid {
+        width: calc(100% - 8px) !important; /* Account for board padding (2px * 2) + border */
+        height: auto !important;
+        max-width: calc(100% - 8px) !important; /* Ensure it fits within container */
+        max-height: calc(100% - 8px) !important;
+        margin: 0 auto;
+        aspect-ratio: 1;
+        display: grid;
+        grid-template-columns: repeat(9, 1fr);
+        grid-template-rows: repeat(9, 1fr);
+        gap: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      
+      .cell {
+        width: 100% !important;
+        height: 100% !important;
+        font-size: 18px !important;
+        min-width: unset !important;
+        min-height: unset !important;
+        box-sizing: border-box;
+        position: relative;
+      }
+      
+      .cell input {
+        font-size: 18px !important;
+        padding: 4px !important;
+        line-height: 1;
+        text-align: center;
+        vertical-align: middle;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+      }
+      
+      .toolbar {
+        margin: 16px 0;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+      }
+      
+      .toolbar button {
+        padding: 12px 20px;
+        font-size: 16px;
+        min-width: 120px;
+      }
+      
+      .keypad {
+        position: static !important;
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--keypad-bg);
+        backdrop-filter: none;
+        border-top: 1px solid var(--border);
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+      }
+      
+      .keypad-16x16 {
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: auto auto auto;
+        gap: 8px;
+      }
+      
+      .keypad-16x16 button {
+        font-size: 14px;
+        padding: 12px 8px;
+        min-height: 44px;
+      }
+      
+      .keypad button {
+        font-size: 16px;
+        padding: 12px 8px;
+        min-height: 48px;
+      }
+      
+      .status {
+        text-align: center;
+        margin: 16px 0;
+        font-size: 16px;
+      }
+    }
+    
+    /* iPad Pro and larger tablets */
+    @media (min-width: 1025px) and (max-width: 1366px) {
+      body {
+        overflow-x: hidden;
+        width: 100%;
+      }
+      
+      .wrap {
+        max-width: 100%;
+        padding: 30px;
+        margin: 0 auto;
+        overflow-x: hidden;
+      }
+      
+      .game-interface {
+        max-width: 900px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 8px; /* Minimal padding for maximum grid space */
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        box-sizing: border-box;
+        overflow-x: hidden;
+        max-width: 100vw;
+      }
+      
+      .board {
+        flex: 1;
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 0px !important; /* No padding for maximum grid space */
+      }
+      
+      .grid-16x16 {
+        width: calc(100% - 2px) !important; /* Account for board padding (1px * 2) */
+        height: auto !important;
+        max-width: calc(100% - 2px) !important; /* Ensure it fits within container */
+        max-height: calc(100% - 2px) !important;
+        margin: 0 auto;
+        aspect-ratio: 1;
+        min-width: unset !important;
+        min-height: unset !important;
+        display: grid;
+        grid-template-columns: repeat(16, 1fr);
+        grid-template-rows: repeat(16, 1fr);
+        gap: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+        background: var(--grid-border) !important; /* Ensure border is always visible */
+      }
+      
+      .cell-16x16 {
+        width: 100% !important;
+        height: 100% !important;
+        font-size: 10px !important;
+        min-width: unset !important;
+        min-height: unset !important;
+        box-sizing: border-box;
+        position: relative;
+      }
+      
+      .cell-16x16 input {
+        font-size: 10px !important;
+        padding: 0px !important;
+        line-height: 1;
+        text-align: center;
+        vertical-align: middle;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+      }
+      
+      .notes-16x16 {
+        font-size: 8px !important;
+        padding: 1px !important;
+        gap: 1px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      
+      .notes-16x16 span {
+        font-size: 8px !important;
+        line-height: 1;
+        padding: 0px !important;
+        margin: 0px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+      
+      .grid {
+        width: calc(100% - 8px) !important; /* Account for board padding (2px * 2) + border */
+        height: auto !important;
+        max-width: calc(100% - 8px) !important; /* Ensure it fits within container */
+        max-height: calc(100% - 8px) !important;
+        margin: 0 auto;
+        aspect-ratio: 1;
+        display: grid;
+        grid-template-columns: repeat(9, 1fr);
+        grid-template-rows: repeat(9, 1fr);
+        gap: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      
+      .cell {
+        width: 100% !important;
+        height: 100% !important;
+        font-size: 20px !important;
+        min-width: unset !important;
+        min-height: unset !important;
+        box-sizing: border-box;
+        position: relative;
+      }
+      
+      .cell input {
+        font-size: 20px !important;
+        padding: 5px !important;
+        line-height: 1;
+        text-align: center;
+        vertical-align: middle;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+      }
+      
+      .toolbar {
+        margin: 20px 0;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+      }
+      
+      .toolbar button {
+        padding: 14px 24px;
+        font-size: 18px;
+        min-width: 140px;
+      }
+      
+      .keypad {
+        position: static !important;
+        margin-top: 20px;
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: var(--keypad-bg);
+        backdrop-filter: none;
+        border-top: 1px solid var(--border);
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+      }
+      
+      .keypad-16x16 {
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: auto auto auto;
+        gap: 10px;
+      }
+      
+      .keypad-16x16 button {
+        font-size: 16px;
+        padding: 14px 10px;
+        min-height: 52px;
+      }
+      
+      .keypad button {
+        font-size: 18px;
+        padding: 14px 10px;
+        min-height: 56px;
+      }
+      
+      .status {
+        text-align: center;
+        margin: 20px 0;
+        font-size: 18px;
+      }
+      
+      /* iPad Air Landscape - Reduce white space and ensure grid fits */
+      @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+        .game-interface {
+          max-width: 1000px; /* More space in landscape */
+          padding: 8px; /* Reduced padding for more grid space */
+        }
+        
+        .board {
+          padding: 0px !important; /* No padding in landscape */
+        }
+        
+        .grid-16x16 {
+          width: 100% !important; /* Full width in landscape */
+          max-width: 100% !important;
+          max-height: 100% !important;
+          background: var(--grid-border) !important; /* Ensure border is always visible */
+        }
+        
+        .grid {
+          width: 100% !important; /* Full width in landscape */
+          max-width: 100% !important;
+          max-height: 100% !important;
+          background: var(--grid-border) !important; /* Ensure border is always visible */
+        }
+      }
+      
+      /* iPad Pro Landscape - Reduce white space and ensure grid fits */
+      @media (min-width: 1025px) and (max-width: 1366px) and (orientation: landscape) {
+        .game-interface {
+          max-width: 1200px; /* More space in landscape */
+          padding: 12px; /* Reduced padding for more grid space */
+        }
+        
+        .board {
+          padding: 0px !important; /* No padding in landscape */
+        }
+        
+        .grid-16x16 {
+          width: 100% !important; /* Full width in landscape */
+          max-width: 100% !important;
+          max-height: 100% !important;
+          background: var(--grid-border) !important; /* Ensure border is always visible */
+        }
+        
+        .grid {
+          width: 100% !important; /* Full width in landscape */
+          max-width: 100% !important;
+          max-height: 100% !important;
+          background: var(--grid-border) !important; /* Ensure border is always visible */
+        }
+      }
+    }
+    
+    /* Mobile responsive sizing for 16x16 Sudoku */
+    @media (max-width: 767px) {
+      .grid-16x16 {
+        /* Use more conservative width to prevent cutoff on Safari/iPhone */
+        width: calc(100vw - 32px) !important;
+        height: calc(100vw - 32px) !important;
+        max-width: calc(100vh - 140px) !important; /* Account for header and keypad */
+        max-height: calc(100vh - 140px) !important;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(16, 1fr);
+        gap: 0;
+        box-sizing: border-box;
+        /* Remove all constraints that prevent fitting */
+        min-width: unset !important;
+        min-height: unset !important;
+        /* Prevent horizontal scrolling */
+        overflow: hidden;
+      }
+      
+      .cell-16x16 {
+        /* Force cells to be exactly 1/16th of grid size */
+        width: calc((100vw - 32px) / 16) !important;
+        height: calc((100vw - 32px) / 16) !important;
+        max-width: calc((100vh - 140px) / 16) !important;
+        max-height: calc((100vh - 140px) / 16) !important;
+        font-size: calc(((100vw - 32px) / 16) * 0.3) !important; /* 30% of cell size */
+        min-width: unset !important;
+        min-height: unset !important;
+        box-sizing: border-box;
+        position: relative;
+      }
+      
+      .cell-16x16 input {
+        font-size: calc(((100vw - 32px) / 16) * 0.3) !important; /* Match cell font size */
+        padding: 1px !important; /* Fixed minimal padding */
+        line-height: 1;
+        text-align: center;
+        vertical-align: middle;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+      }
+      
+      /* Force notes to fit perfectly */
+      .notes-16x16 {
+        font-size: calc(((100vw - 32px) / 16) * 0.12) !important; /* 12% of cell size */
+        padding: 0px !important; /* No padding */
+        gap: 0px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      
+      .notes-16x16 span {
+        font-size: calc(((100vw - 32px) / 16) * 0.12) !important; /* Match container font size */
+        line-height: 1;
+        padding: 0px !important;
+        margin: 0px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+      
+      .notes-16x16.layout-row span,
+      .notes-16x16.layout-column span,
+      .notes-16x16.layout-compact span {
+        font-size: calc(((100vw - 32px) / 16) * 0.12) !important; /* Match container font size */
+        line-height: 1;
+        padding: 0px !important;
+        margin: 0px !important;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+      
+      /* Force double-digit numbers to fit */
+      .notes-16x16 span[data-number="10"],
+      .notes-16x16 span[data-number="11"],
+      .notes-16x16 span[data-number="12"],
+      .notes-16x16 span[data-number="13"],
+      .notes-16x16 span[data-number="14"],
+      .notes-16x16 span[data-number="15"],
+      .notes-16x16 span[data-number="16"] {
+        font-size: calc(((100vw - 32px) / 16) * 0.1) !important; /* 10% of cell size for double digits */
+        letter-spacing: -0.5px !important; /* Fixed letter spacing */
+        line-height: 1;
+        padding: 0px !important;
+        margin: 0px !important;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+    }
+    
+    /* iPhone Safari specific fixes */
+    @supports (-webkit-touch-callout: none) {
+      .grid-16x16 {
+        /* Extra conservative sizing for Safari on iPhone */
+        width: calc(100vw - 40px) !important;
+        height: calc(100vw - 40px) !important;
+        max-width: calc(100vh - 160px) !important;
+        max-height: calc(100vh - 160px) !important;
+      }
+      
+      .cell-16x16 {
+        width: calc((100vw - 40px) / 16) !important;
+        height: calc((100vw - 40px) / 16) !important;
+        max-width: calc((100vh - 160px) / 16) !important;
+        max-height: calc((100vh - 160px) / 16) !important;
+        font-size: calc(((100vw - 40px) / 16) * 0.3) !important;
+      }
+      
+      .cell-16x16 input {
+        font-size: calc(((100vw - 40px) / 16) * 0.3) !important;
+      }
+      
+      .notes-16x16 {
+        font-size: calc(((100vw - 40px) / 16) * 0.12) !important;
+      }
+      
+      .notes-16x16 span {
+        font-size: calc(((100vw - 40px) / 16) * 0.12) !important;
+      }
+      
+      .notes-16x16.layout-row span,
+      .notes-16x16.layout-column span,
+      .notes-16x16.layout-compact span {
+        font-size: calc(((100vw - 40px) / 16) * 0.12) !important;
+      }
+      
+      .notes-16x16 span[data-number="10"],
+      .notes-16x16 span[data-number="11"],
+      .notes-16x16 span[data-number="12"],
+      .notes-16x16 span[data-number="13"],
+      .notes-16x16 span[data-number="14"],
+      .notes-16x16 span[data-number="15"],
+      .notes-16x16 span[data-number="16"] {
+        font-size: calc(((100vw - 40px) / 16) * 0.1) !important;
+      }
+    }
+    
+    /* Telegram Mini App specific fixes */
+    .telegram-webview .grid-16x16 {
+      /* Extra conservative sizing for Telegram Mini App */
+      width: calc(100vw - 48px) !important;
+      height: calc(100vw - 48px) !important;
+      max-width: calc(100vh - 180px) !important;
+      max-height: calc(100vh - 180px) !important;
+    }
+    
+    .telegram-webview .cell-16x16 {
+      width: calc((100vw - 48px) / 16) !important;
+      height: calc((100vw - 48px) / 16) !important;
+      max-width: calc((100vh - 180px) / 16) !important;
+      max-height: calc((100vh - 180px) / 16) !important;
+      font-size: calc(((100vw - 48px) / 16) * 0.3) !important;
+    }
+    
+    .telegram-webview .cell-16x16 input {
+      font-size: calc(((100vw - 48px) / 16) * 0.3) !important;
+    }
+    
+    .telegram-webview .notes-16x16 {
+      font-size: calc(((100vw - 48px) / 16) * 0.12) !important;
+    }
+    
+    .telegram-webview .notes-16x16 span {
+      font-size: calc(((100vw - 48px) / 16) * 0.12) !important;
+    }
+    
+    .telegram-webview .notes-16x16.layout-row span,
+    .telegram-webview .notes-16x16.layout-column span,
+    .telegram-webview .notes-16x16.layout-compact span {
+      font-size: calc(((100vw - 48px) / 16) * 0.12) !important;
+    }
+    
+    .telegram-webview .notes-16x16 span[data-number="10"],
+    .telegram-webview .notes-16x16 span[data-number="11"],
+    .telegram-webview .notes-16x16 span[data-number="12"],
+    .telegram-webview .notes-16x16 span[data-number="13"],
+    .telegram-webview .notes-16x16 span[data-number="14"],
+    .telegram-webview .notes-16x16 span[data-number="15"],
+    .telegram-webview .notes-16x16 span[data-number="16"] {
+      font-size: calc(((100vw - 48px) / 16) * 0.1) !important;
+    }
+    
+    /* Extra small mobile devices - Dynamic sizing */
+    @media (max-width: 480px) {
+      .grid-16x16 {
+        --grid-size: min(calc(100vw - 24px), 320px);
+        width: var(--grid-size);
+        height: var(--grid-size);
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(16, 1fr);
+        gap: 0;
+      }
+      
+      .cell-16x16 {
+        --cell-size: calc(var(--grid-size) / 16);
+        width: var(--cell-size);
+        height: var(--cell-size);
+        font-size: calc(var(--cell-size) * 0.45); /* Dynamic font size: 45% of cell size */
+        min-width: 17.5px;
+        min-height: 17.5px;
+        max-width: 20px;
+        max-height: 20px;
+      }
+      
+      .cell-16x16 input {
+        font-size: calc(var(--cell-size) * 0.45); /* Dynamic font size */
+        padding: calc(var(--cell-size) * 0.03); /* Dynamic padding: 3% of cell size */
+        line-height: 1;
+        text-align: center;
+        vertical-align: middle;
+      }
+      
+      /* Extra small mobile notes - Dynamic sizing */
+      .notes-16x16 {
+        font-size: calc(var(--cell-size) * 0.22); /* Dynamic font size: 22% of cell size */
+        padding: calc(var(--cell-size) * 0.03); /* Dynamic padding */
+        gap: 0px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+      }
+      
+      .notes-16x16 span {
+        font-size: calc(var(--cell-size) * 0.22) !important; /* Dynamic font size */
+        line-height: 1;
+        padding: 0px;
+        margin: 0px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .notes-16x16.layout-row span,
+      .notes-16x16.layout-column span,
+      .notes-16x16.layout-compact span {
+        font-size: calc(var(--cell-size) * 0.22) !important; /* Dynamic font size */
+        line-height: 1;
+        padding: 0px;
+        margin: 0px;
+      }
+      
+      /* Extra small mobile double-digit numbers in notes - Dynamic sizing */
+      .notes-16x16 span[data-number="10"],
+      .notes-16x16 span[data-number="11"],
+      .notes-16x16 span[data-number="12"],
+      .notes-16x16 span[data-number="13"],
+      .notes-16x16 span[data-number="14"],
+      .notes-16x16 span[data-number="15"],
+      .notes-16x16 span[data-number="16"] {
+        font-size: calc(var(--cell-size) * 0.2) !important; /* Slightly smaller for double digits */
+        letter-spacing: calc(var(--cell-size) * -0.008); /* Dynamic letter spacing */
+        line-height: 1;
+        padding: 0px;
+        margin: 0px;
+      }
+    }
+    
+    /* High zoom accessibility support (for elder people) */
+    @media (min-resolution: 2dppx) {
+      .grid-16x16 {
+        min-width: 400px; /* Larger for high DPI displays */
+        min-height: 400px;
+      }
+      
+      .cell-16x16 {
+        min-width: 25px;
+        min-height: 25px;
+        font-size: 12px;
+      }
+      
+      .cell-16x16 input {
+        font-size: 12px;
+        padding: 2px;
+      }
+      
+      /* High DPI notes */
+      .notes-16x16 {
+        font-size: 6px;
+        padding: 2px;
+      }
+      
+      .notes-16x16 span {
+        font-size: 6px !important;
+      }
+      
+      .notes-16x16.layout-row span,
+      .notes-16x16.layout-column span,
+      .notes-16x16.layout-compact span {
+        font-size: 6px !important;
+      }
+      
+      /* High DPI double-digit numbers in notes */
+      .notes-16x16 span[data-number="10"],
+      .notes-16x16 span[data-number="11"],
+      .notes-16x16 span[data-number="12"],
+      .notes-16x16 span[data-number="13"],
+      .notes-16x16 span[data-number="14"],
+      .notes-16x16 span[data-number="15"],
+      .notes-16x16 span[data-number="16"] {
+        font-size: 6px !important;
+        letter-spacing: -0.4px;
+      }
+    }
+    
+    /* Landscape orientation adjustments */
+    @media (max-width: 768px) and (orientation: landscape) {
+      .grid-16x16 {
+        min-width: 400px;
+        min-height: 240px;
+        max-height: 50vh;
+      }
+      
+      .cell-16x16 {
+        min-width: 25px;
+        min-height: 15px;
+        font-size: 11px;
+      }
+      
+      .cell-16x16 input {
+        font-size: 11px;
+        padding: 1px;
+      }
+      
+      /* Landscape notes */
+      .notes-16x16 {
+        font-size: 4px;
+        padding: 1px;
+      }
+      
+      .notes-16x16 span {
+        font-size: 4px !important;
+      }
+      
+      .notes-16x16.layout-row span,
+      .notes-16x16.layout-column span,
+      .notes-16x16.layout-compact span {
+        font-size: 4px !important;
+      }
+      
+      /* Landscape double-digit numbers in notes */
+      .notes-16x16 span[data-number="10"],
+      .notes-16x16 span[data-number="11"],
+      .notes-16x16 span[data-number="12"],
+      .notes-16x16 span[data-number="13"],
+      .notes-16x16 span[data-number="14"],
+      .notes-16x16 span[data-number="15"],
+      .notes-16x16 span[data-number="16"] {
+        font-size: 4px !important;
+        letter-spacing: -0.3px;
+      }
+    }
+    
+    /* Accessibility: Large text support */
+    @media (prefers-reduced-motion: no-preference) and (any-hover: hover) {
+      /* Desktop hover states */
+    }
+    
+    /* Force grid to fit board - iPhone XR and similar devices */
+    @media (max-width: 414px) {
+      .grid-16x16 {
+        /* Force grid to use full available width minus minimal padding */
+        width: calc(100vw - 8px) !important;
+        height: calc(100vw - 8px) !important;
+        max-width: calc(100vh - 100px) !important; /* Account for header and keypad */
+        max-height: calc(100vh - 100px) !important;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(16, 1fr);
+        gap: 0;
+        box-sizing: border-box;
+        /* Remove all constraints that prevent fitting */
+        min-width: unset !important;
+        min-height: unset !important;
+      }
+      
+      .cell-16x16 {
+        /* Force cells to be exactly 1/16th of grid size */
+        width: calc((100vw - 8px) / 16) !important;
+        height: calc((100vw - 8px) / 16) !important;
+        max-width: calc((100vh - 100px) / 16) !important;
+        max-height: calc((100vh - 100px) / 16) !important;
+        font-size: calc(((100vw - 8px) / 16) * 0.32) !important; /* 32% of cell size */
+        min-width: unset !important;
+        min-height: unset !important;
+        box-sizing: border-box;
+        position: relative;
+      }
+      
+      .cell-16x16 input {
+        font-size: calc(((100vw - 8px) / 16) * 0.32) !important; /* Match cell font size */
+        padding: 1px !important; /* Fixed minimal padding */
+        line-height: 1;
+        text-align: center;
+        vertical-align: middle;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+      }
+      
+      /* Force notes to fit perfectly */
+      .notes-16x16 {
+        font-size: calc(((100vw - 8px) / 16) * 0.13) !important; /* 13% of cell size */
+        padding: 0px !important; /* No padding */
+        gap: 0px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      
+      .notes-16x16 span {
+        font-size: calc(((100vw - 8px) / 16) * 0.13) !important; /* Match container font size */
+        line-height: 1;
+        padding: 0px !important;
+        margin: 0px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+      
+      .notes-16x16.layout-row span,
+      .notes-16x16.layout-column span,
+      .notes-16x16.layout-compact span {
+        font-size: calc(((100vw - 8px) / 16) * 0.13) !important; /* Match container font size */
+        line-height: 1;
+        padding: 0px !important;
+        margin: 0px !important;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+      
+      /* Force double-digit numbers to fit */
+      .notes-16x16 span[data-number="10"],
+      .notes-16x16 span[data-number="11"],
+      .notes-16x16 span[data-number="12"],
+      .notes-16x16 span[data-number="13"],
+      .notes-16x16 span[data-number="14"],
+      .notes-16x16 span[data-number="15"],
+      .notes-16x16 span[data-number="16"] {
+        font-size: calc(((100vw - 8px) / 16) * 0.11) !important; /* 11% of cell size for double digits */
+        letter-spacing: -0.4px !important; /* Fixed letter spacing */
+        line-height: 1;
+        padding: 0px !important;
+        margin: 0px !important;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+    }
+    
+    /* Touch device optimizations */
+    @media (pointer: coarse) {
+      .cell-16x16 {
+        min-width: 28px; /* Larger touch targets */
+        min-height: 28px;
+      }
+      
+      .cell-16x16 input {
+        font-size: 11px;
+        padding: 2px;
+      }
+      
+      /* Touch device notes */
+      .notes-16x16 {
+        font-size: 5px;
+        padding: 2px;
+      }
+      
+      .notes-16x16 span {
+        font-size: 5px !important;
+      }
+      
+      .notes-16x16.layout-row span,
+      .notes-16x16.layout-column span,
+      .notes-16x16.layout-compact span {
+        font-size: 5px !important;
+      }
+      
+      /* Touch device double-digit numbers in notes */
+      .notes-16x16 span[data-number="10"],
+      .notes-16x16 span[data-number="11"],
+      .notes-16x16 span[data-number="12"],
+      .notes-16x16 span[data-number="13"],
+      .notes-16x16 span[data-number="14"],
+      .notes-16x16 span[data-number="15"],
+      .notes-16x16 span[data-number="16"] {
+        font-size: 5px !important;
+        letter-spacing: -0.4px;
+      }
+    }
+    
+    /* Accessibility: Zoom support for elder people */
+    @media screen and (min-width: 1200px) {
+      /* Large screens with zoom */
+      .grid-16x16 {
+        min-width: 600px;
+        min-height: 600px;
+      }
+      
+      .cell-16x16 {
+        min-width: 37.5px;
+        min-height: 37.5px;
+        font-size: 16px;
+      }
+      
+      .cell-16x16 input {
+        font-size: 16px;
+        padding: 3px;
+      }
+      
+      /* Large screen notes */
+      .notes-16x16 {
+        font-size: 8px;
+        padding: 3px;
+      }
+      
+      .notes-16x16 span {
+        font-size: 8px !important;
+      }
+      
+      .notes-16x16.layout-row span,
+      .notes-16x16.layout-column span,
+      .notes-16x16.layout-compact span {
+        font-size: 8px !important;
+      }
+      
+      /* Large screen double-digit numbers in notes */
+      .notes-16x16 span[data-number="10"],
+      .notes-16x16 span[data-number="11"],
+      .notes-16x16 span[data-number="12"],
+      .notes-16x16 span[data-number="13"],
+      .notes-16x16 span[data-number="14"],
+      .notes-16x16 span[data-number="15"],
+      .notes-16x16 span[data-number="16"] {
+        font-size: 8px !important;
+        letter-spacing: -0.6px;
+      }
+    }
+    
+    .cell { 
+      position: relative; 
+      background: var(--cell); 
+      aspect-ratio: 1 / 1; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    
+    .cell input { 
+      position: absolute; 
+      inset: 0; 
+      width: 100%; 
+      height: 100%; 
+      text-align: center; 
+      font-size: 20px; 
+      font-weight: 600;
+      border: none; 
+      background: transparent; 
+      color: var(--accent); 
+      outline: none;
+      font-family: inherit;
+      transition: color 0.3s ease;
+      pointer-events: none;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      box-sizing: border-box;
+    }
+    
+    .cell-16x16 input {
+      font-size: 12px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 2px;
+      box-sizing: border-box;
+      line-height: 1;
+    }
+    
+    /* Special handling for double-digit numbers in 16x16 */
+    .cell-16x16 input[value="10"],
+    .cell-16x16 input[value="11"],
+    .cell-16x16 input[value="12"],
+    .cell-16x16 input[value="13"],
+    .cell-16x16 input[value="14"],
+    .cell-16x16 input[value="15"],
+    .cell-16x16 input[value="16"] {
+      font-size: 11px;
+      padding: 1px;
+    }
+    
+    /* Ensure 16x16 cells are large enough for numbers 10-16 */
+    .cell-16x16 {
+      min-width: 32px;
+      min-height: 32px;
+      font-size: 12px;
+    }
+    
+    .cell.given { 
+      background: rgba(0, 0, 0, 0.05); 
+      font-weight: 700; 
+      color: var(--text); 
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    
+    .cell.given input {
+      color: var(--text);
+      font-weight: 700;
+      transition: color 0.2s ease;
+    }
+    
+    /* Given cells should not be selectable but should show hover state */
+    .cell.given:hover {
+      background: rgba(0, 0, 0, 0.08);
+    }
+    
+    .cell.given:hover input {
+      color: var(--text);
+    }
+    
+    .cell.selected { 
+      background: rgba(0, 122, 255, 0.15); 
+      outline: 2px solid #007AFF; 
+      outline-offset: -2px; 
+      transition: all 0.2s ease;
+      z-index: 10;
+      box-shadow: 0 0 8px rgba(0, 122, 255, 0.3);
+    }
+    
+    .cell.selected input {
+      color: #007AFF;
+      font-weight: 700;
+    }
+    
+    /* Row and column highlighting for selected cell */
+    .cell.highlight-row,
+    .cell.highlight-col {
+      background: rgba(0, 122, 255, 0.08);
+      transition: background-color 0.2s ease;
+    }
+    
+    .cell.highlight-row input,
+    .cell.highlight-col input {
+      color: var(--text);
+    }
+    
+    /* Box highlighting for selected cell */
+    .cell.highlight-box {
+      background: rgba(0, 122, 255, 0.06);
+      transition: background-color 0.2s ease;
+    }
+    
+    .cell.highlight-box input {
+      color: var(--text);
+    }
+    
+    /* Number highlighting - highlight cells with same number */
+    .cell.number-highlight {
+      background: rgba(0, 122, 255, 0.12) !important;
+      outline: 1px solid rgba(0, 122, 255, 0.3) !important;
+      outline-offset: -1px;
+      transition: all 0.2s ease;
+    }
+    
+    .cell.number-highlight input {
+      color: #007AFF !important;
+      font-weight: 600 !important;
+    }
+    
+    /* Hover effects for better interactivity */
+    .cell:hover:not(.selected):not(.given) {
+      background: rgba(0, 122, 255, 0.05);
+      transition: background-color 0.2s ease;
+    }
+    
+    .cell:hover:not(.selected):not(.given) input {
+      color: var(--text);
+    }
+    
+    /* Enhanced selection feedback */
+    .cell.selected:not(.given) {
+      animation: cellSelect 0.2s ease-out;
+    }
+    
+    @keyframes cellSelect {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(0, 122, 255, 0.3);
+      }
+      50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 12px rgba(0, 122, 255, 0.4);
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 8px rgba(0, 122, 255, 0.3);
+      }
+    }
+    
+    /* Note highlighting for Logic Wiz style */
+    .notes span.note-highlight {
+      background: rgba(0, 122, 255, 0.2);
+      color: #007AFF;
+      font-weight: 600;
+      border-radius: 2px;
+      padding: 1px 2px;
+    }
+    
+    /* Conflict highlighting with Logic Wiz style */
+    .cell.conflict { 
+      background: rgba(255, 59, 48, 0.15) !important;
+      color: #ff3b30;
+      transition: all 0.2s ease;
+      animation: conflictPulse 0.6s ease-in-out;
+    }
+    
+    .cell.conflict input {
+      color: #ff3b30;
+      font-weight: 600;
+    }
+    
+    @keyframes conflictPulse {
+      0%, 100% { 
+        background: rgba(255, 59, 48, 0.15);
+        transform: scale(1);
+      }
+      50% { 
+        background: rgba(255, 59, 48, 0.25);
+        transform: scale(1.02);
+      }
+    }
+    
+    /* 3x3 box borders for 9x9 - create proper 3x3 sub-grids */
+    /* Vertical borders every 3 cells */
+    .grid > .cell:nth-child(3n+1) { border-left: 3px solid #000000; }
+    .grid > .cell:nth-child(3n) { border-right: 3px solid #000000; }
+    
+    /* Horizontal borders every 3 rows */
+    .grid > .cell:nth-child(-n+9) { border-top: 3px solid #000000; }
+    .grid > .cell:nth-child(n+28):nth-child(-n+36) { border-top: 3px solid #000000; }
+    .grid > .cell:nth-child(n+55):nth-child(-n+63) { border-top: 3px solid #000000; }
+    .grid > .cell:nth-child(n+73) { border-bottom: 3px solid #000000; }
+    
+    /* Add thin borders for individual cells */
+    .grid > .cell { 
+      border: 1px solid var(--border); 
+    }
+    
+    /* Base borders for all 16x16 cells - consistent across all layout modes */
+    .grid-16x16 > .cell { 
+      border: 2px solid var(--border) !important; 
+    }
+    
+    /* 4x4 box borders for 16x16 - create proper 4x4 sub-grids */
+    /* Vertical borders every 4 cells - thicker borders for block separation */
+    .grid-16x16 > .cell:nth-child(4n+1) { border-left: 3px solid #000000 !important; }
+    .grid-16x16 > .cell:nth-child(4n) { border-right: 3px solid #000000 !important; }
+    
+    /* Horizontal borders every 4 rows - thicker borders for block separation */
+    .grid-16x16 > .cell:nth-child(-n+16) { border-top: 3px solid #000000 !important; }
+    .grid-16x16 > .cell:nth-child(n+65):nth-child(-n+80) { border-top: 3px solid #000000 !important; }
+    .grid-16x16 > .cell:nth-child(n+129):nth-child(-n+144) { border-top: 3px solid #000000 !important; }
+    .grid-16x16 > .cell:nth-child(n+193):nth-child(-n+208) { border-top: 3px solid #000000 !important; }
+    .grid-16x16 > .cell:nth-child(n+241) { border-bottom: 3px solid #000000 !important; }
+    
+    .toolbar { 
+      margin-top: 16px; 
+      display: flex; 
+      gap: 8px; 
+      flex-wrap: wrap;
+    }
+    
+    button { 
+      padding: 12px 16px; 
+      border-radius: 10px; 
+      border: 1px solid var(--border);
+      background: var(--button-bg); 
+      color: var(--button-text); 
+      font-weight: 600; 
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    
+    button:hover {
+      background: var(--button-secondary);
+      transform: translateY(-1px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button.primary { 
+      background: var(--accent); 
+      color: white; 
+      border-color: var(--accent);
+    }
+    
+    button.primary:hover {
+      background: var(--accent);
+      filter: brightness(0.9);
+    }
+    
+    button.secondary { 
+      background: var(--button-secondary); 
+      color: var(--text); 
+      border-color: var(--border);
+    }
+    
+    button:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .status { 
+      margin-top: 12px; 
+      min-height: 24px; 
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+    
+    .keypad { 
+      position: fixed; 
+      left: 0; 
+      right: 0; 
+      bottom: 0; 
+      padding: 16px calc(env(safe-area-inset-left,0) + 20px) calc(env(safe-area-inset-bottom,0) + 16px) calc(env(safe-area-inset-right,0) + 20px); 
+      background: var(--keypad-bg); 
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      display: grid; 
+      grid-template-columns: repeat(9, 1fr); 
+      grid-template-rows: auto auto;
+      gap: 8px; 
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    
+    /* Tool buttons row - 6 buttons */
+    .keypad .tool-btn:nth-child(n+10) {
+      grid-column: span 1.5;
+    }
+    
+    .keypad-16x16 {
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: auto auto auto;
+      gap: 4px;
+    }
+    
+    .keypad-16x16 button {
+      font-size: 11px;
+      padding: 6px 0;
+      min-height: 32px;
+    }
+    
+    .keypad-16x16 button.primary {
+      font-weight: 600;
+    }
+    
+    /* 16x16 keypad layout: 8 columns × 3 rows */
+    .keypad-16x16 {
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: auto auto auto;
+      gap: 4px;
+    }
+    
+    /* First row: numbers 1-8 */
+    .keypad-16x16 button[data-k="1"] { grid-row: 1; grid-column: 1; }
+    .keypad-16x16 button[data-k="2"] { grid-row: 1; grid-column: 2; }
+    .keypad-16x16 button[data-k="3"] { grid-row: 1; grid-column: 3; }
+    .keypad-16x16 button[data-k="4"] { grid-row: 1; grid-column: 4; }
+    .keypad-16x16 button[data-k="5"] { grid-row: 1; grid-column: 5; }
+    .keypad-16x16 button[data-k="6"] { grid-row: 1; grid-column: 6; }
+    .keypad-16x16 button[data-k="7"] { grid-row: 1; grid-column: 7; }
+    .keypad-16x16 button[data-k="8"] { grid-row: 1; grid-column: 8; }
+    
+    /* Second row: numbers 9-16 */
+    .keypad-16x16 button[data-k="9"] { grid-row: 2; grid-column: 1; }
+    .keypad-16x16 button[data-k="10"] { grid-row: 2; grid-column: 2; }
+    .keypad-16x16 button[data-k="11"] { grid-row: 2; grid-column: 3; }
+    .keypad-16x16 button[data-k="12"] { grid-row: 2; grid-column: 4; }
+    .keypad-16x16 button[data-k="13"] { grid-row: 2; grid-column: 5; }
+    .keypad-16x16 button[data-k="14"] { grid-row: 2; grid-column: 6; }
+    .keypad-16x16 button[data-k="15"] { grid-row: 2; grid-column: 7; }
+    .keypad-16x16 button[data-k="16"] { grid-row: 2; grid-column: 8; }
+    
+    /* Third row: all 6 tool buttons in the same row */
+    .keypad-16x16 .tool-btn:nth-child(17) { grid-row: 3; grid-column: 1; }
+    .keypad-16x16 .tool-btn:nth-child(18) { grid-row: 3; grid-column: 2; }
+    .keypad-16x16 .tool-btn:nth-child(19) { grid-row: 3; grid-column: 3; }
+    .keypad-16x16 .tool-btn:nth-child(20) { grid-row: 3; grid-column: 4; }
+    .keypad-16x16 .tool-btn:nth-child(21) { grid-row: 3; grid-column: 5; }
+    .keypad-16x16 .tool-btn:nth-child(22) { grid-row: 3; grid-column: 6; }
+    
+    /* Mobile keypad adjustments */
+    @media (max-width: 768px) {
+      /* Regular keypad (9x9) mobile adjustments */
+      .keypad:not(.keypad-16x16) {
+        gap: 6px;
+        padding: 12px calc(env(safe-area-inset-left,0) + 16px) calc(env(safe-area-inset-bottom,0) + 12px) calc(env(safe-area-inset-right,0) + 16px);
+      }
+      
+      .keypad:not(.keypad-16x16) button {
+        padding: 12px 0;
+        font-size: 16px;
+        min-height: 44px;
+      }
+      
+      /* 16x16 keypad mobile adjustments */
+      .keypad-16x16 {
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: auto auto auto;
+        gap: 3px;
+        padding: 12px calc(env(safe-area-inset-left,0) + 16px) calc(env(safe-area-inset-bottom,0) + 12px) calc(env(safe-area-inset-right,0) + 16px);
+      }
+      
+      .keypad-16x16 button {
+        padding: 8px 6px;
+        font-size: 12px;
+        min-height: 36px;
+      }
+      
+      .keypad-16x16 .tool-btn {
+        padding: 6px 3px !important;
+        font-size: 12px !important;
+        min-height: 32px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      /* Regular keypad (9x9) small mobile adjustments */
+      .keypad:not(.keypad-16x16) {
+        gap: 4px;
+        padding: 8px calc(env(safe-area-inset-left,0) + 12px) calc(env(safe-area-inset-bottom,0) + 8px) calc(env(safe-area-inset-right,0) + 12px);
+      }
+      
+      .keypad:not(.keypad-16x16) button {
+        padding: 10px 0;
+        font-size: 14px;
+        min-height: 40px;
+      }
+      
+      /* 16x16 keypad small mobile adjustments */
+      .keypad-16x16 {
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: auto auto auto;
+        gap: 2px;
+        padding: 8px calc(env(safe-area-inset-left,0) + 12px) calc(env(safe-area-inset-bottom,0) + 8px) calc(env(safe-area-inset-right,0) + 12px);
+      }
+      
+      .keypad-16x16 button {
+        padding: 6px 4px;
+        font-size: 11px;
+        min-height: 32px;
+      }
+      
+      .keypad-16x16 .tool-btn {
+        padding: 4px 2px !important;
+        font-size: 10px !important;
+        min-height: 28px;
+      }
+    }
+    
+    /* 16x16 specific styles */
+    .grid-16x16 {
+      grid-template-columns: repeat(16, 1fr) !important;
+      gap: 0 !important;
+    }
+    
+    .cell-16x16 {
+      font-size: 14px;
+    }
+    
+    .cell-16x16 input {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    /* Stronger borders for 4x4 blocks in 16x16 - create proper 4x4 sub-grids */
+    /* Vertical borders every 4 cells */
+    .grid-16x16 > .cell:nth-child(4n+1) { 
+      border-left: 3px solid #000000 !important; 
+    }
+    .grid-16x16 > .cell:nth-child(4n) { 
+      border-right: 3px solid #000000 !important; 
+    }
+    
+    /* Horizontal borders every 4 rows */
+    .grid-16x16 > .cell:nth-child(-n+16) { 
+      border-top: 3px solid #000000 !important; 
+    }
+    .grid-16x16 > .cell:nth-child(n+65):nth-child(-n+80) { 
+      border-top: 3px solid #000000 !important; 
+    }
+    .grid-16x16 > .cell:nth-child(n+129):nth-child(-n+144) { 
+      border-top: 3px solid #000000 !important; 
+    }
+    .grid-16x16 > .cell:nth-child(n+193):nth-child(-n+208) { 
+      border-top: 3px solid #000000 !important; 
+    }
+    .grid-16x16 > .cell:nth-child(n+241) { 
+      border-bottom: 3px solid #000000 !important; 
+    }
+    
+    /* Add thin borders for individual cells */
+    .grid-16x16 > .cell { 
+      border: 1px solid var(--border) !important; 
+    }
+    
+    .keypad button { 
+      padding: 16px 0; 
+      font-size: 18px; 
+      border-radius: 12px; 
+      background: var(--button-bg); 
+      color: var(--button-text); 
+      border: 1px solid var(--border);
+      font-weight: 600;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    
+    .keypad-16x16 button {
+      font-size: 14px;
+      padding: 12px 0;
+    }
+    
+    .keypad button.primary { 
+      background: var(--accent); 
+      color: white; 
+      border-color: var(--accent);
+    }
+    
+    .keypad button:hover {
+      background: var(--button-secondary);
+      transform: translateY(-1px);
+    }
+    
+    .keypad button:active {
+      transform: translateY(0);
+      background: var(--button-secondary);
+    }
+    
+    .keypad button:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    
+    .tool-btn {
+      background: var(--button-bg) !important;
+      color: var(--text) !important;
+      border: 1px solid var(--border) !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 8px !important;
+      font-size: 16px !important;
+      border-radius: 12px !important;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    
+    /* 16x16 keypad tool buttons - smaller to fit in same row */
+    .keypad-16x16 .tool-btn {
+      padding: 8px 4px !important;
+      font-size: 14px !important;
+      border-radius: 8px !important;
+    }
+    
+    .tool-btn:hover {
+      background: var(--button-secondary) !important;
+      transform: translateY(-1px);
+    }
+    
+    .tool-btn:active {
+      transform: translateY(0);
+      background: var(--button-secondary) !important;
+    }
+    
+    .tool-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+    
+    /* 16x16 keypad tool button icons - smaller */
+    .keypad-16x16 .tool-btn svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 1.5;
+    }
+    
+    .tool-btn.active {
+      background: var(--accent) !important;
+      color: white !important;
+      border-color: var(--accent) !important;
+    }
+    
+    .tool-btn.active svg {
+      stroke: white;
+    }
+    
+    .tool-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      background: var(--button-secondary) !important;
+    }
+    
+    .tool-btn:disabled:hover {
+      transform: none;
+      background: var(--button-secondary) !important;
+    }
+    
+    .notes { 
+      position: absolute; 
+      inset: 0; 
+      display: grid; 
+      grid-template-columns: repeat(3,1fr); 
+      grid-template-rows: repeat(3,1fr); 
+      font-size: 5px; 
+      color: var(--muted); 
+      pointer-events: none; 
+      padding: 2px; 
+      gap: 1px; 
+      transition: color 0.3s ease;
+    }
+    
+    .notes span { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      opacity: 0.8; 
+      font-weight: 500;
+    }
+    
+    /* Notes layout styles */
+    .notes.layout-row {
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      font-size: 5px;
+      gap: 0px;
+      padding: 0px;
+      max-width: 100%;
+      max-height: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    
+    .notes.layout-row span {
+      margin: 0;
+      border-radius: 0px;
+      min-width: 0px;
+      min-height: 0px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 0px;
+      box-sizing: border-box;
+      font-size: 5px;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    
+    .notes.layout-column {
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      font-size: 5px;
+      gap: 0px;
+      padding: 0px;
+      max-width: 100%;
+      max-height: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    
+    .notes.layout-column span {
+      margin: 0;
+      border-radius: 0px;
+      min-width: 0px;
+      min-height: 0px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 0px;
+      box-sizing: border-box;
+      font-size: 5px;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    
+    .notes.layout-compact {
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      font-size: 5px;
+      gap: 0px;
+      padding: 0px;
+      max-width: 100%;
+      max-height: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    
+    .notes.layout-compact span {
+      margin: 0;
+      border-radius: 0px;
+      min-width: 0px;
+      min-height: 0px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 0px;
+      box-sizing: border-box;
+      font-size: 5px;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    
+    .keypad.hidden { 
+      display: none; 
+    }
+    
+    /* Notes layout selection mode styles */
+    body.layout-selection-mode {
+      cursor: crosshair;
+    }
+    
+    body.layout-selection-mode .cell {
+      cursor: pointer;
+    }
+    
+    body.layout-selection-mode .cell:hover {
+      background: rgba(255, 193, 7, 0.2) !important;
+      outline: 2px dashed #ffc107 !important;
+      outline-offset: -2px;
+    }
+    
+    body.layout-selection-mode .cell:active {
+      background: rgba(255, 193, 7, 0.3) !important;
+      outline: 2px solid #ffc107 !important;
+    }
+    
+    #proofPanel {
+      white-space: pre-wrap;
+      background: var(--cell);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+      display: none;
+      border: 1px solid var(--border);
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--text);
+      max-height: 200px;
+      overflow-y: auto;
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    }
+    
+    /* Logic Lane specific styles */
+    .logic-lane-line {
+      position: absolute;
+      background: var(--accent);
+      opacity: 0.3;
+      z-index: 1;
+    }
+    
+    .logic-lane-cell {
+      background: rgba(0, 122, 255, 0.1) !important;
+    }
+    
+    /* Killer Sudoku specific styles */
+    .killer-cage {
+      position: absolute;
+      border: 2px solid var(--accent);
+      background: rgba(0, 122, 255, 0.05);
+      z-index: 1;
+    }
+    
+    .killer-sum {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      font-size: 10px;
+      color: var(--accent);
+      font-weight: bold;
+      z-index: 2;
+    }
+    
+    /* Number highlighting styles */
+    .cell.number-highlight {
+      background: var(--selected-bg) !important;
+      outline: 2px solid var(--accent) !important;
+      outline-offset: -2px;
+    }
+    
+    .cell.number-highlight input {
+      color: var(--accent) !important;
+      font-weight: 700 !important;
+    }
+    
+    /* Removed gray effect for other numbers - they stay black */
+    .cell.number-highlight-others {
+      opacity: 1;
+    }
+    
+    .cell.number-highlight-others input {
+      opacity: 1;
+    }
+    
+    /* Ensure given numbers maintain their styling when highlighted */
+    .cell.given.number-highlight {
+      background: var(--selected-bg) !important;
+    }
+    
+    .cell.given.number-highlight input {
+      color: var(--accent) !important;
+      font-weight: 700 !important;
+    }
+    
+    /* Conflict highlighting takes priority over number highlighting */
+    .cell.conflict {
+      background: var(--conflict-bg) !important;
+      color: var(--error) !important;
+    }
+    
+    .cell.conflict input {
+      color: var(--error) !important;
+    }
+    
+    /* Even when number-highlighted, conflicts should still show */
+    .cell.conflict.number-highlight {
+      background: var(--conflict-bg) !important;
+      outline: 2px solid var(--error) !important;
+    }
+    
+    .cell.conflict.number-highlight input {
+      color: var(--error) !important;
+    }
+    
+    /* Notes styles */
+    .notes { 
+      position: absolute; 
+      inset: 0; 
+      display: grid; 
+      grid-template-columns: repeat(3,1fr); 
+      grid-template-rows: repeat(3,1fr); 
+      font-size: 8px; 
+      color: var(--muted); 
+      pointer-events: none; 
+      padding: 2px; 
+      gap: 1px; 
+      transition: color 0.3s ease;
+    }
+    
+    .notes-16x16 {
+      grid-template-columns: repeat(4,1fr);
+      grid-template-rows: repeat(4,1fr);
+      font-size: 5px;
+      gap: 0px;
+      padding: 2px;
+      overflow: hidden;
+    }
+    
+    .notes-16x16 span {
+      font-size: 5px;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    
+    /* 16x16 Notes layout styles */
+    .notes-16x16.layout-row {
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      font-size: 5px;
+      gap: 0px;
+      padding: 2px;
+      max-width: 100%;
+      max-height: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    
+    .notes-16x16.layout-row span {
+      margin: 0;
+      border-radius: 0px;
+      min-width: 0px;
+      min-height: 0px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 0px;
+      box-sizing: border-box;
+      font-size: 5px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    
+    .notes-16x16.layout-column {
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      font-size: 5px;
+      gap: 0px;
+      padding: 2px;
+      max-width: 100%;
+      max-height: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    
+    .notes-16x16.layout-column span {
+      margin: 0;
+      border-radius: 0px;
+      min-width: 0px;
+      min-height: 0px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 0px;
+      box-sizing: border-box;
+      font-size: 5px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    
+    .notes-16x16.layout-compact {
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      font-size: 5px;
+      gap: 0px;
+      padding: 2px;
+      max-width: 100%;
+      max-height: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    
+    .notes-16x16.layout-compact span {
+      margin: 0;
+      border-radius: 0px;
+      min-width: 0px;
+      min-height: 0px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 0px;
+      box-sizing: border-box;
+      font-size: 5px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+    
+    .notes span { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      opacity: 0.8; 
+      font-weight: 500;
+    }
+    
+    /* Special handling for double-digit numbers in 16x16 notes */
+    .notes-16x16 span[data-number="10"],
+    .notes-16x16 span[data-number="11"],
+    .notes-16x16 span[data-number="12"],
+    .notes-16x16 span[data-number="13"],
+    .notes-16x16 span[data-number="14"],
+    .notes-16x16 span[data-number="15"],
+    .notes-16x16 span[data-number="16"] {
+      font-size: 5px !important;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    
+    /* Ensure all 16x16 notes spans use 5px font size regardless of layout */
+    .notes-16x16.layout-row span,
+    .notes-16x16.layout-column span,
+    .notes-16x16.layout-compact span {
+      font-size: 5px !important;
+    }
+    
+    /* Settings modal styles */
+    .settings-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+    
+    .settings-modal-content {
+      background: var(--cell);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px var(--shadow);
+      border: 1px solid var(--border);
+    }
+    
+    .settings-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 24px;
+      gap: 16px;
+    }
+    
+    .settings-back-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--text);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+    }
+    
+    .settings-back-btn:hover {
+      background: var(--button-secondary);
+    }
+    
+    .settings-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0;
+    }
+    
+    .settings-section {
+      margin-bottom: 24px;
+    }
+    
+    .settings-option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .settings-option:last-child {
+      border-bottom: none;
+    }
+    
+    .settings-option-label {
+      font-size: 16px;
+      color: var(--text);
+      font-weight: 500;
+    }
+    
+    .settings-toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--button-secondary);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .settings-toggle.active {
+      background: var(--accent);
+    }
+    
+    .settings-toggle-slider {
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .settings-toggle.active .settings-toggle-slider {
+      transform: translateX(20px);
+    }
+    
+    .settings-radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .settings-radio-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+    
+    .settings-radio {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .settings-radio.active {
+      border-color: var(--accent);
+    }
+    
+    .settings-radio.active::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+    
+    .settings-radio-label {
+      font-size: 14px;
+      color: var(--text);
+      cursor: pointer;
+    }
+    
+    /* Hint modal styles */
+    .hint-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+    
+    .hint-modal-content {
+      background: var(--cell);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 8px 32px var(--shadow);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    
+    .hint-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .hint-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    
+    .hint-message {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    
+    .hint-credits {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    
+    .hint-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .hint-btn {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    
+    .hint-btn.cancel {
+      background: var(--button-secondary);
+      color: var(--text);
+    }
+    
+    .hint-btn.confirm {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    
+    .hint-btn:hover {
+      transform: translateY(-1px);
+    }
+    
+    .hint-btn.cancel:hover {
+      background: var(--border);
+    }
+    
+    .hint-btn.confirm:hover {
+      filter: brightness(0.9);
+    }
+    
+    /* Hint highlight animation */
+    .cell.hint-highlight {
+      animation: hintPulse 3s ease-in-out;
+    }
+    
+    @keyframes hintPulse {
+      0% { background: var(--cell); }
+      20% { background: #FFD700; transform: scale(1.1); }
+      40% { background: #FFA500; transform: scale(1.05); }
+      60% { background: #FFD700; transform: scale(1.1); }
+      80% { background: #FFA500; transform: scale(1.05); }
+      100% { background: var(--cell); transform: scale(1); }
+    }
+    
+    /* Celebration modal styles */
+    .celebration-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      backdrop-filter: blur(8px);
+    }
+    
+    .celebration-modal-content {
+      background: var(--cell);
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 16px 48px var(--shadow);
+      border: 1px solid var(--border);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .celebration-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: celebrationBounce 2s ease-in-out infinite;
+    }
+    
+    @keyframes celebrationBounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
+    }
+    
+    .celebration-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    
+    .celebration-subtitle {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    
+    .celebration-stats {
+      background: var(--button-secondary);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .celebration-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .celebration-stat:last-child {
+      margin-bottom: 0;
+    }
+    
+    .celebration-stat-label {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    
+    .celebration-stat-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    
+    .celebration-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .celebration-btn {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    
+    .celebration-btn.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    
+    .celebration-btn.secondary {
+      background: var(--button-secondary);
+      color: var(--text);
+    }
+    
+    .celebration-btn:hover {
+      transform: translateY(-2px);
+    }
+    
+    .celebration-btn.primary:hover {
+      filter: brightness(0.9);
+    }
+    
+    .celebration-btn.secondary:hover {
+      background: var(--border);
+    }
+    
+    /* Confetti styles */
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: #f00;
+      animation: confetti-fall 3s linear infinite;
+      z-index: 1500;
+    }
+    
+    /* Proof link styles */
+    .proof-link {
+      color: var(--accent);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    
+    .proof-link:hover {
+      opacity: 0.8;
+    }
+    
+    @keyframes confetti-fall {
+      0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+    
+    /* Loading spinner for proof generation */
+    .proof-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    
+    .proof-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    /* Loading spinner for dynamic popup */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      border-top-color: var(--accent);
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Top Controls -->
+    <div class="top-controls">
+      <button class="theme-toggle" id="themeToggle">🌙 Dark</button>
+      <button class="top-icon-btn" id="hintBtn" title="Hint">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </button>
+      <button class="top-icon-btn" id="settingsBtn" title="Settings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Main Menu -->
+    <div class="main-menu" id="mainMenu">
+      <div class="menu-header">
+        <div class="menu-logo">🧩</div>
+        <h1 class="menu-title">ZkSudoku</h1>
+        <p class="menu-subtitle">Choose your puzzle type</p>
+      </div>
+      
+      <div class="menu-options">
+        <a href="#" class="menu-option menu-option-16x16" data-mode="16x16">
+          <div class="menu-option-icon">16</div>
+          <div class="menu-option-title">16x16 Sudoku</div>
+          <div class="menu-option-description">Classic Sudoku with 16x16 grid</div>
+        </a>
+        
+        <a href="#" class="menu-option menu-option-logic-lane" data-mode="logic-lane">
+          <div class="menu-option-icon">⚡</div>
+          <div class="menu-option-title">Logic Lane</div>
+          <div class="menu-option-description">Thermo and Palindrome variants</div>
+        </a>
+        
+        <a href="#" class="menu-option menu-option-killer" data-mode="killer">
+          <div class="menu-option-icon">🎯</div>
+          <div class="menu-option-title">Killer Sudoku</div>
+          <div class="menu-option-description">Cage-based Sudoku with sums</div>
+        </a>
+        
+        <a href="#" class="menu-option menu-option-leaderboard" id="leaderboardButton">
+          <div class="menu-option-icon">🏆</div>
+          <div class="menu-option-title">Leaderboard</div>
+          <div class="menu-option-description">Fastest completion times</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Puzzle Selection Interface (hidden by default) -->
+    <div class="puzzle-selection-interface" id="puzzleSelectionInterface">
+      <button class="back-button" id="puzzleSelectionBackButton">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Menu
+      </button>
+      
+      <div class="puzzle-selection-header">
+        <h2>🧩 Choose Your 16x16 Puzzle</h2>
+        <p>Select from our collection of verified puzzles</p>
+      </div>
+      
+      <div class="puzzle-grid" id="puzzleGrid">
+        <!-- Puzzle options will be populated here -->
+      </div>
+    </div>
+
+    <!-- Game Interface -->
+    <div class="game-interface" id="gameInterface">
+      <button class="back-button" id="backButton">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Menu
+      </button>
+      
+      <h2 id="gameTitle">Sudoku</h2>
+      <div id="meta">
+        <div>Time: <span id="timer">00:00</span> <button id="pauseBtn" class="pause-btn" title="Pause/Resume">⏸️</button></div>
+        <div id="pid"></div>
+      </div>
+      <div class="board">
+        <div id="grid" class="grid"></div>
+      </div>
+      <div class="toolbar">
+        <button id="solve" class="primary">Solve (Test)</button>
+        <button id="togglePad" class="secondary">Hide Keypad</button>
+        <button id="submit" class="primary">Submit Solution</button>
+        <button id="reset" class="secondary">Reset</button>
+      </div>
+      <div class="status" id="status">Fill all cells with digits 1–9</div>
+      <pre id="proofPanel"></pre>
+    </div>
+
+    <!-- Leaderboard Interface -->
+    <div class="leaderboard-interface" id="leaderboardInterface">
+      <button class="back-button" id="leaderboardBackButton">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Menu
+      </button>
+      
+      <div class="leaderboard-header">
+        <h2>🏆 ZKSUDOKU LEADERBOARD</h2>
+        <p id="leaderboardPuzzleInfo">Fastest completion times with zkVerify proofs</p>
+      </div>
+      
+      <div class="leaderboard-filter">
+        <label for="puzzleFilter">Filter by Puzzle:</label>
+        <select id="puzzleFilter" class="puzzle-select">
+          <option value="9x9">9x9 Sudoku</option>
+          <option value="16x16_1">16x16 Sudoku - Puzzle 1</option>
+          <option value="16x16_2">16x16 Sudoku - Puzzle 2</option>
+        </select>
+      </div>
+      
+      <div class="leaderboard-controls">
+        <button id="refreshLeaderboard" class="primary">🔄 Refresh</button>
+        <button id="myBestTime" class="secondary">My Best Time</button>
+      </div>
+      
+      <div class="leaderboard-container">
+        <div class="leaderboard-table">
+          <div class="leaderboard-header-row">
+            <div class="rank-col">RANK</div>
+            <div class="player-col">PLAYER</div>
+            <div class="score-col">TIME</div>
+            <div class="date-col">DATE</div>
+            <div class="proof-col">PROOF</div>
+          </div>
+          <div id="leaderboardEntries" class="leaderboard-entries">
+            <!-- Leaderboard entries will be populated here -->
+          </div>
+        </div>
+      </div>
+      
+      <div class="leaderboard-status" id="leaderboardStatus">Loading leaderboard...</div>
+    </div>
+  </div>
+
+  <!-- Pause Indicator -->
+  <div id="pauseIndicator" class="pause-indicator">
+    <span class="pause-icon">⏸️</span>
+    <span>Timer Paused - You can still play!</span>
+  </div>
+
+  <div class="keypad">
+    <!-- Numbers row -->
+    <button class="primary" data-k="1">1</button>
+    <button class="primary" data-k="2">2</button>
+    <button class="primary" data-k="3">3</button>
+    <button class="primary" data-k="4">4</button>
+    <button class="primary" data-k="5">5</button>
+    <button class="primary" data-k="6">6</button>
+    <button class="primary" data-k="7">7</button>
+    <button class="primary" data-k="8">8</button>
+    <button class="primary" data-k="9">9</button>
+    
+    <!-- Tools row -->
+    <button id="toggleNotes" class="tool-btn" title="Notes">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+        <path d="M2 2l7.586 7.586"/>
+        <circle cx="11" cy="11" r="2"/>
+      </svg>
+    </button>
+    <button id="toggleNotesLayout" class="tool-btn" title="Notes Layout">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <line x1="9" y1="9" x2="15" y2="9"/>
+        <line x1="9" y1="12" x2="15" y2="12"/>
+        <line x1="9" y1="15" x2="15" y2="15"/>
+        <circle cx="6" cy="6" r="1"/>
+        <circle cx="18" cy="6" r="1"/>
+        <circle cx="6" cy="18" r="1"/>
+        <circle cx="18" cy="18" r="1"/>
+      </svg>
+    </button>
+    <button id="toggleKeyboard" class="tool-btn" title="Keyboard">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="4" width="20" height="16" rx="2" ry="2"/>
+        <line x1="6" y1="8" x2="6" y2="8"/>
+        <line x1="10" y1="8" x2="10" y2="8"/>
+        <line x1="14" y1="8" x2="14" y2="8"/>
+        <line x1="18" y1="8" x2="18" y2="8"/>
+        <line x1="6" y1="12" x2="6" y2="12"/>
+        <line x1="10" y1="12" x2="10" y2="12"/>
+        <line x1="14" y1="12" x2="14" y2="12"/>
+        <line x1="18" y1="12" x2="18" y2="12"/>
+        <line x1="6" y1="16" x2="6" y2="16"/>
+        <line x1="10" y1="16" x2="10" y2="16"/>
+        <line x1="14" y1="16" x2="14" y2="16"/>
+        <line x1="18" y1="16" x2="18" y2="16"/>
+      </svg>
+    </button>
+    <button data-k="C" class="tool-btn" title="Clear">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 6h18"/>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        <line x1="10" y1="11" x2="10" y2="17"/>
+        <line x1="14" y1="11" x2="14" y2="17"/>
+      </svg>
+    </button>
+    <button id="undoBtn" class="tool-btn" title="Undo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 7v6h6"/>
+        <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+      </svg>
+    </button>
+    <button id="redoBtn" class="tool-btn" title="Redo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 7v6h-6"/>
+        <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3-2.3"/>
+      </svg>
+    </button>
+    <!-- Empty cells to complete the grid -->
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html> 

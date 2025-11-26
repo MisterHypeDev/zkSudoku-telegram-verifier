@@ -1,0 +1,19 @@
+
+[package]
+name = "verifier-interface"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "no_std trait and types for zk Sudoku proof verification"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+
