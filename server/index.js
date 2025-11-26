@@ -678,7 +678,7 @@ app.post('/api/zkverify', async (req, res) => {
           const { events, transactionResult } = await session
             .verify()
               .ultraplonk({
-                numberOfPublicInputs: 0 // Try with 0 public inputs first
+                numberOfPublicInputs: 4
             })
             .execute({
               proofData: {
